@@ -17,18 +17,34 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
     
     override func viewDidLoad(){
         super.viewDidLoad()
+        addFeedNotification()
         setUpNavController()
         self.collectionView?.register(HomeCell.self, forCellWithReuseIdentifier: cellId)
         self.collectionView?.backgroundColor = .white
-        fetchImages()
+        let refreshControl = UIRefreshControl()
+        refreshControl.addTarget(self, action: #selector(handleRefresh), for: UIControlEvents.valueChanged)
+        self.collectionView?.refreshControl = refreshControl
+        fetchPost()
     }
     
-    override func viewWillAppear(_ animated: Bool) {
+    func addFeedNotification(){
+        NotificationCenter.default.addObserver(self, selector: #selector(handleRefresh), name: SharePhotoController.updateFeedNotificationName, object: nil)
+    }
+    
+    func handleRefresh(){
+        self.posts.removeAll()
+        fetchPost()
+    }
+    
+    func fetchPost(){
+        fetchCurrentUserPost()
+        fetchFollowingUsersPost()
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
         let cell = self.collectionView?.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! HomeCell
+        
         cell.post = posts[indexPath.item]
         
         return cell
@@ -52,11 +68,20 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
         return CGSize(width: self.view.frame.width, height: height)
     }
     
-    func fetchImages(){
+    func fetchCurrentUserPost(){
+        guard let userId = Firebase.Auth.auth().currentUser?.uid else {return}
+            
+        Firebase.Database.fetchUserWithUID(uid: userId) { (user) in
+                self.fetchPostWithUser(user)
+        }
+    }
+    
+    func fetchFollowingUsersPost(){
         guard let userId = Firebase.Auth.auth().currentUser?.uid else {return}
         
         let ref = Firebase.Database.database().reference().child("Following").child(userId)
         ref.observeSingleEvent(of: .value, with: { (snapshot) in
+            
             guard let dict = snapshot.value as? [String: Any] else {return}
             
             dict.forEach({ (key, value) in
@@ -70,13 +95,13 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
     fileprivate func fetchPostWithUser(_ user: User){
             Firebase.Database.database().reference().child("post").child(user.id).observeSingleEvent(of: DataEventType.value, with: { (snapshot) in
             
-            guard let dictionaries = snapshot.value as? [String: Any] else {return}
-            self.posts.removeAll()
-            dictionaries.forEach({ (key: String, value: Any) in
-                guard let dictionary = value as? [String: Any] else {return}
+                self.collectionView?.refreshControl?.endRefreshing()
+                guard let dictionaries = snapshot.value as? [String: Any] else {return}
+                dictionaries.forEach({ (key: String, value: Any) in
+                    guard let dictionary = value as? [String: Any] else {return}
                 
-                let post = Post(user, dic: dictionary)
-                self.posts.append(post)})
+                    let post = Post(user, dic: dictionary)
+                    self.posts.append(post)})
                 
             self.posts.sort(by: { (p1, p2) -> Bool in
                 p1.time.compare(p2.time) == .orderedDescending

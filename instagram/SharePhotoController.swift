@@ -12,6 +12,7 @@ import Firebase
 class SharePhotoController: UIViewController {
     
     var selectedImage:UIImage?
+    static let updateFeedNotificationName = NSNotification.Name(rawValue: "UpdateFeed")
     
     let containerView: UIView = {
         let view = UIView()
@@ -93,6 +94,7 @@ class SharePhotoController: UIViewController {
             }
             else{
                 self.dismiss(animated: true, completion: nil)
+                NotificationCenter.default.post(name: SharePhotoController.updateFeedNotificationName, object: nil)
             }
         })
     }
