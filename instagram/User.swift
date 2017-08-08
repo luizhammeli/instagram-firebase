@@ -7,3 +7,16 @@
 //
 
 import Foundation
+
+struct User {
+    var name: String
+    var profileImageUrl: String
+    var id: String
+    
+    init(id:String, name:String, profileImageUrl: String){
+        
+        self.id = id
+        self.name = name
+        self.profileImageUrl = profileImageUrl
+    }
+}

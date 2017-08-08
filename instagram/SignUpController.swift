@@ -68,8 +68,21 @@ class SignUpController: UIViewController, UIImagePickerControllerDelegate, UINav
         return button
     }()
     
+    let signInButton: UIButton = {
+        let button = UIButton(type: .system)
+        
+        let attributedTitle = NSMutableAttributedString(string: "Alredy have an account? ", attributes: [NSFontAttributeName : UIFont.systemFont(ofSize: 14), NSForegroundColorAttributeName: UIColor.lightGray])
+        
+        attributedTitle.append(NSAttributedString(string: "Sign In", attributes: [NSFontAttributeName : UIFont.boldSystemFont(ofSize: 14), NSForegroundColorAttributeName: UIColor.rgb(red: 27, green: 156, blue: 226)]))
+        
+        button.setAttributedTitle(attributedTitle, for: .normal)
+        button.addTarget(self, action: #selector(showSignUpController), for: UIControlEvents.touchUpInside)
+        return button
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.view.backgroundColor = .white
         setUpViews()
     }
     
@@ -119,7 +132,12 @@ class SignUpController: UIViewController, UIImagePickerControllerDelegate, UINav
                         return
                     }
                     
-                    print("dados gravado")
+                    print("dados gravados")
+                    
+                    guard let mainTabController = UIApplication.shared.keyWindow?.rootViewController as? MainTabBarController else {return}
+                    mainTabController.setUpMainTabBarController()
+                    
+                    self.dismiss(animated: true, completion: nil)
                 })
             })
         }
@@ -158,6 +176,7 @@ class SignUpController: UIViewController, UIImagePickerControllerDelegate, UINav
     func setUpViews(){
         
         self.view.addSubview(userPhotoButton)
+        self.view.addSubview(signInButton)
         
         userPhotoButton.anchor(top: self.view.topAnchor, bottom: nil, right: nil, left: nil, paddingTop: 40, paddingBottom: 0, paddingLeft: 0, paddingRight: 0, height: 140, width: 140)
         userPhotoButton.centerXAnchor.constraint(equalTo: self.view.centerXAnchor).isActive = true
@@ -168,6 +187,13 @@ class SignUpController: UIViewController, UIImagePickerControllerDelegate, UINav
         viewStack.distribution = .fillEqually
         viewStack.axis = .vertical
         viewStack.anchor(top: self.userPhotoButton.bottomAnchor, bottom: nil, right: self.view.rightAnchor, left: self.view.leftAnchor, paddingTop: 20, paddingBottom: 0, paddingLeft: 40, paddingRight: -40, height: 200, width: nil)
+        
+        signInButton.anchor(top: nil, bottom: self.view.bottomAnchor, right: self.view.rightAnchor, left: self.view.leftAnchor, paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 0, height: 50, width: nil)
+    }
+    
+    func showSignUpController(){
+        
+        self.navigationController?.popViewController(animated: true)
     }
 }
 
@@ -182,7 +208,7 @@ extension UIView{
         }
         
         if let bottom = bottom{
-            self.bottomAnchor.constraint(equalTo: bottom, constant: paddingBottom).isActive = true
+            self.bottomAnchor.constraint(equalTo: bottom, constant: -paddingBottom).isActive = true
         }
         
         if let right = right{
