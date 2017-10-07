@@ -9,24 +9,28 @@
 import UIKit
 import Firebase
 
-class UserProfileController: UICollectionViewController, UICollectionViewDelegateFlowLayout {
+class UserProfileController: UICollectionViewController, UICollectionViewDelegateFlowLayout, UserProfileControllerProtocol {
     
     let headerCellId = "headerCellId"
     let cellId = "cellId"
+    let listCellId = "listCellId"
     var user: User?
     var posts = [Post]()
+    var isGridViewSelected = true
+    var isFinished = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.collectionView?.backgroundColor = UIColor.white
         setUpLogOutButton()
         registerCells()
-        fetchUserData()        
+        fetchUserData()
     }
     
     func registerCells(){
         self.collectionView?.register(UserProfileHeader.self, forSupplementaryViewOfKind: UICollectionElementKindSectionHeader, withReuseIdentifier: headerCellId)
         self.collectionView?.register(UserProfileCell.self, forCellWithReuseIdentifier: cellId)
+        self.collectionView?.register(HomeCell.self, forCellWithReuseIdentifier: listCellId)
     }
     
     func setUpLogOutButton(){
@@ -49,6 +53,50 @@ class UserProfileController: UICollectionViewController, UICollectionViewDelegat
         alertController.addAction(UIAlertAction(title: "Cancel", style: UIAlertActionStyle.cancel, handler: nil))
         
         present(alertController, animated: true, completion: nil)
+    }
+    
+    fileprivate func paginatePosts(){
+        guard let uid = user?.id else {return}
+        let ref = Firebase.Database.database().reference().child("post").child(uid)
+        //var query = ref.queryOrderedByKey()
+        var query = ref.queryOrdered(byChild: "date")
+        guard let user = self.user else{return}
+        
+        if(posts.count > 0){
+            let value = posts.last?.time.timeIntervalSince1970
+            //let value = posts.last?.id
+            query = query.queryEnding(atValue: value)
+        }
+        
+        query.queryLimited(toLast: 4).observeSingleEvent(of: .value, with: { (snapshot) in
+            guard var allObjects = snapshot.children.allObjects as? [DataSnapshot] else {return}
+            
+            if (allObjects.count < 4){
+                self.isFinished = true
+            }
+            if(self.posts.count > 0 && allObjects.count > 0){
+                allObjects.removeLast()
+            }
+            
+            allObjects.reverse()
+                        
+            allObjects.forEach({ (snapshot) in
+                guard let dic = snapshot.value as? [String: Any] else {return}
+                var post = Post(user, dic: dic)
+                post.id = snapshot.key
+                self.posts.append(post)
+            })
+            
+            self.posts.forEach({ (post) in
+                print(post.id ?? "")
+            })
+            
+            self.collectionView?.reloadData()
+            
+        }) { (err) in
+            print("Error")
+        }
+        
     }
     
     fileprivate func fetchOrderedPosts(){
@@ -74,6 +122,7 @@ class UserProfileController: UICollectionViewController, UICollectionViewDelegat
         
         let header = self.collectionView?.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: headerCellId, for: indexPath) as! UserProfileHeader
         header.user = self.user
+        header.delegate = self
         
         return header
     }
@@ -84,15 +133,34 @@ class UserProfileController: UICollectionViewController, UICollectionViewDelegat
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! UserProfileCell
-        cell.post = posts[indexPath.item]
-        return cell
+        if(indexPath.item == posts.count - 1 && !isFinished){
+            paginatePosts()
+        }
+        
+        if(isGridViewSelected){
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! UserProfileCell
+            cell.post = posts[indexPath.item]
+            return cell
+        }else{
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: listCellId, for: indexPath) as! HomeCell
+            cell.post = posts[indexPath.item]
+            return cell
+        }
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         
-        let width = (self.view.frame.width - 2) / 3
-        return CGSize(width: width, height: width)
+        if(isGridViewSelected){
+            let width = (self.view.frame.width - 2) / 3
+            return CGSize(width: width, height: width)
+        }else{
+            var height:CGFloat = 40 + 8 + 8
+            height += self.view.frame.width
+            height += 50
+            height += 60
+            
+            return CGSize(width: self.view.frame.width, height: height)
+        }
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
@@ -107,7 +175,14 @@ class UserProfileController: UICollectionViewController, UICollectionViewDelegat
         return CGSize(width: self.view.frame.width, height: 200)
     }
     
-    override func viewWillDisappear(_ animated: Bool) {
+    func girdViewSelected(){
+        isGridViewSelected = true
+        self.collectionView?.reloadData()
+    }
+    
+    func listViewSelected(){
+        isGridViewSelected = false
+        self.collectionView?.reloadData()
     }
     
     fileprivate func fetchUserData(){
@@ -120,7 +195,8 @@ class UserProfileController: UICollectionViewController, UICollectionViewDelegat
                 self.user = user
                 self.navigationItem.title = self.user?.name
                 self.collectionView?.reloadData()
-                self.fetchOrderedPosts()
+                self.paginatePosts()
+                //self.fetchOrderedPosts()
             }
         }
     }

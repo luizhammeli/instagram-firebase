@@ -8,7 +8,14 @@
 
 import UIKit
 
+protocol CommentViewControllerDelegate {
+    func goToCommentViewController(post: Post)->Void
+    func didLike(cell: HomeCell)->Void
+}
+
 class HomeCell: UICollectionViewCell {
+    
+    var delegate:CommentViewControllerDelegate?
     
     var post: Post?{
         didSet{
@@ -20,7 +27,9 @@ class HomeCell: UICollectionViewCell {
             photoImageView.loadImageView(url)
             userProfileImageView.loadImageView(profileImageUrl)
             userNameLabel.text = user.name
-            setUpcaption()            
+            setUpcaption()
+            
+            post?.isLiked == true ? likeButton.setImage(#imageLiteral(resourceName: "like_selected").withRenderingMode(.alwaysOriginal), for: .normal) : likeButton.setImage(#imageLiteral(resourceName: "like_unselected").withRenderingMode(.alwaysOriginal), for: .normal)
         }
     }
     
@@ -57,22 +66,24 @@ class HomeCell: UICollectionViewCell {
     }()
     
     
-    let likeButton: UIButton = {
+    lazy var likeButton: UIButton = {
         
         let button = UIButton(type: .system)
         button.setImage(#imageLiteral(resourceName: "like_unselected").withRenderingMode(.alwaysOriginal), for: .normal)
         button.contentMode = .scaleAspectFill
         button.clipsToBounds = true
+        button.addTarget(self, action: #selector(handleLike), for: UIControlEvents.touchUpInside)
         return button
     }()
     
     
-    let commentButton: UIButton = {
+    lazy var commentButton: UIButton = {
     
         let button = UIButton(type: .system)
         button.setImage(#imageLiteral(resourceName: "comment").withRenderingMode(.alwaysOriginal), for: .normal)
         button.contentMode = .scaleAspectFill
         button.clipsToBounds = true
+        button.addTarget(self, action: #selector(showCommentViewController), for: .touchUpInside)
         return button
     }()
     
@@ -161,5 +172,14 @@ class HomeCell: UICollectionViewCell {
         atributtedText.append(NSAttributedString(string: post.time.timeAgoDisplay(), attributes: [NSFontAttributeName : UIFont.systemFont(ofSize: 12), NSForegroundColorAttributeName: UIColor.gray]))
         
         comentLabel.attributedText = atributtedText
+    }
+    
+    func showCommentViewController(){
+        guard let post = self.post else {return}
+        delegate?.goToCommentViewController(post: post)
+    }
+    
+    func handleLike(){
+        delegate?.didLike(cell: self)
     }
 }

@@ -9,7 +9,14 @@
 import UIKit
 import Firebase
 
+protocol UserProfileControllerProtocol {
+    func girdViewSelected()->Void
+    func listViewSelected()->Void
+}
+
 class UserProfileHeader: UICollectionViewCell {        
+    
+    var delegate: UserProfileControllerProtocol?
     
     var user:User?{
     
@@ -45,19 +52,20 @@ class UserProfileHeader: UICollectionViewCell {
         return button
     }()
     
-    let gridButton: UIButton = {
+    lazy var gridButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(#imageLiteral(resourceName: "grid"), for: .normal)
-        button.tintColor = UIColor(white: 0, alpha: 0.2)
+        button.addTarget(self, action: #selector(handleGridButton), for: UIControlEvents.touchUpInside)
+        button.tintColor = UIColor.black
         return button
     }()
     
-    let listButton: UIButton = {
+    lazy var listButton: UIButton = {
         
         let button = UIButton(type: .system)
         button.setImage(#imageLiteral(resourceName: "list"), for: .normal)
         button.tintColor = UIColor(white: 0, alpha: 0.2)
-        
+        button.addTarget(self, action: #selector(handleListButton), for: UIControlEvents.touchUpInside)
         return button
     }()
     
@@ -66,16 +74,27 @@ class UserProfileHeader: UICollectionViewCell {
         let button = UIButton(type: .system)
         button.setImage(#imageLiteral(resourceName: "ribbon"), for: .normal)
         button.tintColor = UIColor(white: 0, alpha: 0.2)
-        
         return button
     }()
     
     var nameLabel: UILabel = {
         let label = UILabel()
-        //label.text = " "
         label.font = UIFont.boldSystemFont(ofSize: 13)
         return label
     }()
+    
+    func handleGridButton(){
+        gridButton.tintColor = UIColor.black
+        listButton.tintColor = UIColor(white: 0, alpha: 0.2)
+        delegate?.girdViewSelected()
+    }
+    
+    
+    func handleListButton(){
+        listButton.tintColor = UIColor.black
+        gridButton.tintColor = UIColor(white: 0, alpha: 0.2)
+        delegate?.listViewSelected()
+    }
     
     let postLabel: UILabel = {
         let label = UILabel()

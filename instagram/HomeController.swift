@@ -9,7 +9,7 @@
 import UIKit
 import Firebase
 
-class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLayout {
+class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLayout, CommentViewControllerDelegate {
     
     let cellId = "cellId"
     var posts = [Post]()
@@ -46,6 +46,7 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
         let cell = self.collectionView?.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! HomeCell
         
         cell.post = posts[indexPath.item]
+        cell.delegate = self
         
         return cell
     }
@@ -97,17 +98,60 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
             
                 self.collectionView?.refreshControl?.endRefreshing()
                 guard let dictionaries = snapshot.value as? [String: Any] else {return}
+                guard let uid = Firebase.Auth.auth().currentUser?.uid else {return}
                 dictionaries.forEach({ (key: String, value: Any) in
                     guard let dictionary = value as? [String: Any] else {return}
                 
-                    let post = Post(user, dic: dictionary)
-                    self.posts.append(post)})
-                
-            self.posts.sort(by: { (p1, p2) -> Bool in
-                p1.time.compare(p2.time) == .orderedDescending
-            })
-            
-            self.collectionView?.reloadData()            
+                    var post = Post(user, dic: dictionary)
+                    post.id = key
+                    
+                    Firebase.Database.database().reference().child("likes").child(key).child(uid).observeSingleEvent(of: .value, with: { (snapshot) in
+                        
+                        if let result = snapshot.value as? Int, result == 1 {
+                            post.isLiked = true
+                        }else{
+                            post.isLiked = false
+                        }
+                    
+                        self.posts.append(post)
+                        self.posts.sort(by: { (p1, p2) -> Bool in
+                            p1.time.compare(p2.time) == .orderedDescending
+                        })
+                        self.collectionView?.reloadData()
+                    }, withCancel: { (err) in
+                        print("error")
+                    })
+
+                })
         })
     }
+    
+    func goToCommentViewController(post: Post) {
+        
+        let layout = UICollectionViewFlowLayout()
+        let commentViewController = CommentViewController(collectionViewLayout: layout)
+        commentViewController.post = post
+        self.navigationController?.pushViewController(commentViewController, animated: true)
+    }
+    
+    func didLike(cell: HomeCell){
+        guard let postId = cell.post?.id else {return}
+        guard let uid = Firebase.Auth.auth().currentUser?.uid else {return}
+        guard let indexPath = collectionView?.indexPath(for: cell) else {return}
+        
+        var post = self.posts[indexPath.item]
+        
+        post.isLiked = !post.isLiked
+        let dic = [uid: post.isLiked == true ? 1 : 0] as [String:Any]
+        
+        Firebase.Database.database().reference().child("likes").child(postId).updateChildValues(dic) { (error, reference) in
+            
+            if error != nil{
+                print("Error")
+            }
+            self.posts[(indexPath.item)] = post
+            self.collectionView?.reloadItems(at: [indexPath])
+        }
+    }
 }
+

@@ -14,6 +14,8 @@ struct Post{
     let user: User
     let caption: String
     let time: Date
+    var id: String?
+    var isLiked: Bool = false
     
     init(_ user:User, dic: [String: Any]){
         imageUrl = dic["imageUrl"] as? String ?? ""
